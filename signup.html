@@ -1,0 +1,39 @@
+<!-- TIER 3 FLOW -->
+<div id="tier3" style="display:none; margin-top:20px;">
+
+    <!-- STEP 1: PERSONAL INFO -->
+    <div class="step" id="step1">
+        <h3>Verify Your Identity</h3>
+        <input type="text" placeholder="Full Name">
+        <input type="date">
+        <input type="text" placeholder="Address">
+        <button onclick="nextStep(2)">Continue</button>
+    </div>
+
+    <!-- STEP 2: ID UPLOAD -->
+    <div class="step" id="step2" style="display:none;">
+        <h3>Upload ID</h3>
+        <input type="file">
+        <button onclick="nextStep(3)">Upload</button>
+    </div>
+
+    <!-- STEP 3: SELFIE -->
+    <div class="step" id="step3" style="display:none;">
+        <h3>Take a Selfie</h3>
+        <button onclick="nextStep(4)">Capture Selfie</button>
+    </div>
+
+    <!-- STEP 4: BIOMETRIC -->
+    <div class="step" id="step4" style="display:none;">
+        <h3>Secure Your Account</h3>
+        <button onclick="enableBiometric()">Enable Fingerprint</button>
+        <p id="bioStatus"></p>
+    </div>
+
+    <!-- STEP 5: COMPLETE -->
+    <div class="step" id="step5" style="display:none;">
+        <h3>✅ Verified!</h3>
+        <p>Your account is fully secured</p>
+    </div>
+
+</div>
