@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,7 +29,7 @@ html,body{height:100%;font-family:'Nunito',sans-serif;overflow:hidden;}
 }
 
 /* ── SIGNUP PAGE ── */
-#signup .content{
+#signup .content, #connect .content{
   position:relative;z-index:2;
   display:flex;flex-direction:column;
   align-items:center;
@@ -53,6 +52,11 @@ html,body{height:100%;font-family:'Nunito',sans-serif;overflow:hidden;}
   background:none;
   backdrop-filter:none;
   padding:0 20px;
+}
+
+#connect .tagline{
+  top:8%;
+  font-size:22px;
 }
 
 
@@ -228,6 +232,59 @@ html,body{height:100%;font-family:'Nunito',sans-serif;overflow:hidden;}
   </div>
 </div>
 
+<!-- ══ CONNECT WALLET PAGE ══ -->
+<div class="page" id="connect">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="content">
+    <p class="tagline">Connect Your Xaman Wallet</p>
+    <div class="form-card" style="text-align:center">
+
+      <!-- Silent Partner explanation -->
+      <div style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
+        <p style="color:#FFD700;font-family:'Fredoka One',cursive;font-size:15px;margin-bottom:6px;">😴 The Sleeping Giant</p>
+        <p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:700;line-height:1.6;">
+          Your XRP never leaves your wallet. It just goes to work while you sleep. Every trade on the network pays you a tiny fee. Wake up to rewards. Every. Single. Day.
+        </p>
+      </div>
+
+      <!-- Mobile button -->
+      <button class="btn-primary" id="open-xaman" onclick="openXaman()" style="margin-bottom:14px;">
+        📱 Open Xaman App
+      </button>
+
+      <!-- Divider -->
+      <div class="divider">or scan on desktop</div>
+
+      <!-- QR Code -->
+      <div id="qr-wrap" style="display:flex;justify-content:center;margin-bottom:12px;">
+        <div style="background:#fff;border-radius:16px;padding:12px;display:inline-block;min-width:184px;min-height:184px;display:flex;align-items:center;justify-content:center;">
+          <img id="qr-img" src="" alt="QR Code" style="width:160px;height:160px;border-radius:8px;display:block;" onerror="this.style.display='none';document.getElementById('qr-placeholder').style.display='flex'" />
+          <div id="qr-placeholder" style="display:none;width:160px;height:160px;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+            <div style="font-size:32px;">📲</div>
+            <div style="font-size:11px;color:#999;text-align:center;">Loading QR...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="qr-loading" style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:700;margin-bottom:10px;">
+        📱 Waiting for wallet connection...
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border-radius:12px;padding:8px 14px;margin-bottom:12px;">
+        <span style="font-size:16px">⏱️</span>
+        <span id="qr-timer" style="color:#FFD700;font-family:'Fredoka One',cursive;font-size:14px;">Expires in 3:00</span>
+      </div>
+
+      <button onclick="refreshQR()" style="background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:50px;padding:8px 20px;font-size:12px;font-weight:800;cursor:pointer;">🔄 New QR Code</button>
+
+      <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,0.4);font-weight:700;">
+        Don't have Xaman? <a href="https://xaman.app" target="_blank" style="color:#38bdf8;text-decoration:none;">Download here</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ DASHBOARD PAGE ══ -->
 <div class="page" id="dashboard">
   <div class="bg"></div>
@@ -269,17 +326,15 @@ const API = 'https://api.rippledripple.campioneinfrastructure.com';
 let userAccount = null;
 let earnings = 0;
 let drip = 0;
+let timerInterval = null;
 
-function showSignup(){
-  document.getElementById('signup').classList.add('active');
-  document.getElementById('dashboard').classList.remove('active');
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
-
-function showDash(){
-  document.getElementById('signup').classList.remove('active');
-  document.getElementById('dashboard').classList.add('active');
-  startEarningsTicker();
-}
+function showSignup(){ showPage('signup'); }
+function showConnect(){ showPage('connect'); }
+function showDash(){ showPage('dashboard'); startEarningsTicker(); }
 
 async function doSignup(){
   const email = document.getElementById('email').value;
@@ -290,38 +345,62 @@ async function doSignup(){
   if(!email){err.textContent='Please enter your email';return;}
   if(!pass || pass.length < 6){err.textContent='Password must be at least 6 characters';return;}
   if(pass !== conf){err.textContent='Passwords do not match';return;}
-
   err.textContent='';
 
-  // Create XUMM signin payload
-  try {
-    const res = await fetch(API+'/api/signin',{method:'POST'});
-    const data = await res.json();
-    if(data.success){
-      // Open XUMM QR in new tab for wallet connection
-      window.open(data.deeplink,'_blank');
-      // Poll for wallet connection
-      pollSignin(data.uuid);
-    }
-  } catch(e){
-    err.textContent='Connection error. Please try again.';
+  showConnect();
+  await refreshQR();
+}
+
+let currentDeeplink = null;
+
+function openXaman(){
+  if(currentDeeplink){
+    window.location.href = currentDeeplink;
   }
 }
 
+async function refreshQR(){
+  try{
+    const res = await fetch(API+'/api/signin',{method:'POST'});
+    const data = await res.json();
+    if(data.success){
+      currentDeeplink = data.deeplink;
+      const img = document.getElementById('qr-img');
+      img.style.display = 'block';
+      document.getElementById('qr-placeholder').style.display = 'none';
+      img.src = data.qr;
+      startTimer(180);
+      pollSignin(data.uuid);
+    }
+  }catch(e){
+    document.getElementById('qr-loading').textContent='❌ Connection error. Tap New QR Code.';
+  }
+}
+
+function startTimer(seconds){
+  if(timerInterval) clearInterval(timerInterval);
+  let s = seconds;
+  timerInterval = setInterval(()=>{
+    s--;
+    const m = Math.floor(s/60);
+    const sec = s%60;
+    document.getElementById('qr-timer').textContent = `Expires in ${m}:${sec.toString().padStart(2,'0')}`;
+    if(s<=0){ clearInterval(timerInterval); document.getElementById('qr-timer').textContent='Expired — tap New QR Code'; }
+  },1000);
+}
+
 async function pollSignin(uuid){
-  const err = document.getElementById('err');
-  err.textContent='📱 Scan QR with Xaman wallet...';
-  err.style.color='#38bdf8';
-  
+  document.getElementById('qr-loading').textContent='📱 Waiting for wallet connection...';
   let attempts = 0;
   const interval = setInterval(async()=>{
     attempts++;
-    if(attempts > 60){clearInterval(interval);err.textContent='Timed out. Please try again.';err.style.color='#ff6b6b';return;}
+    if(attempts > 60){ clearInterval(interval); return; }
     try{
       const res = await fetch(API+'/api/signin/'+uuid);
       const data = await res.json();
       if(data.signed && data.account){
         clearInterval(interval);
+        clearInterval(timerInterval);
         userAccount = data.account;
         loadBalance(data.account);
         showDash();
