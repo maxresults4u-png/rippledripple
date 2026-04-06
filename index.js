@@ -302,4 +302,33 @@ app.get('/api/v1/alerts/whales', freeLimiter, (req, res) => { const limit = Math
 app.use((req, res) => { res.status(404).json({ error:'Endpoint not found' }); });
 process.on('uncaughtException', (e) => { console.error('Uncaught:', e.message); });
 process.on('unhandledRejection', (e) => { console.error('Unhandled:', e); });
+// -------------------------------------------
+// ISO 20022 EBIT Status Endpoint (Safe Add-On)
+// -------------------------------------------
+
+app.get('/iso/ebit/status', (req, res) => {
+  const payload = {
+    event: {
+      lastUpdate: new Date().toISOString(),
+      schema: "ebit.iso20022.v1"
+    },
+    amount: {
+      currentSupply: global.ebitCurrentSupply || 0,
+      burnedTotal: global.ebitBurnedTotal || 0,
+      treasuryBalance: global.ebitTreasuryBalance || 0
+    },
+    market: {
+      price: global.ebitPrice || 0,
+      volume24h: global.ebitVolume24h || 0
+    },
+    status: {
+      network: "XRPL",
+      ammPool: global.ebitAmmState || "unknown",
+      treasury: global.ebitTreasuryState || "unknown"
+    }
+  };
+
+  res.json(payload);
+});
+
 app.listen(PORT, '0.0.0.0', () => { console.log('API running on port ' + PORT); startXRPL(); });
