@@ -7,6 +7,12 @@ const axios = require('axios');
 const xrpl = require('xrpl');
 const { execSync } = require('child_process');
 const fs = require('fs');
+global.ebitCurrentSupply = 0;
+global.ebitBurnedTotal = 0;
+global.ebitTreasuryBalance = 0;
+global.ebitAmmState = "unknown";
+global.ebitPrice = 0;
+global.ebitVolume24h = 0;
 
 const app = express();
 const PORT = 3000;
